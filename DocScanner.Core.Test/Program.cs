@@ -1,13 +1,12 @@
 ﻿using DocScanner.Core.Services;
 using OpenCvSharp;
-using System;
 
 namespace DocScanner.Core.Test
 {
     class Program
     {
-        private static Mat guassianRes = new Mat();
-        private static Mat cannyRes = new Mat();
+        //private static Mat guassianRes = new Mat();
+        //private static Mat cannyRes = new Mat();
 
         static void Main(string[] args)
         {
@@ -15,53 +14,43 @@ namespace DocScanner.Core.Test
         }
         static void TestParams()
         {
-            string imagePath = @"..\..\..\..\Data\test2.jpeg";
+            string imagePath = @"..\..\..\..\Data\test3.jpeg";
             var imageProc = new ImageProcessor(imagePath);
 
-            using var src = imageProc.OrigImage;
-            using var dst = imageProc.GrayImage;
+            using var src = imageProc.OrigImage.Clone();
+            using var dst = imageProc.GrayImage.Clone();
 
-            Cv2.Resize(src, src, new Size(300, (int)((float)300 / src.Width * src.Height)));
-            Cv2.Resize(dst, dst, src.Size());
 
-            Cv2.GaussianBlur(dst, dst, new Size(21, 21), 0);
-            Cv2.MedianBlur(dst, dst, 21);
-            // Cv2.AdaptiveThreshold(dst, dst, 255, AdaptiveThresholdTypes.GaussianC, ThresholdTypes.Binary, 21, 2);
-            // skeleton
+            //Cv2.Resize(src, src, new Size(300, (int)((float)300 / src.Width * src.Height)));
+            //Cv2.Resize(src, src, new Size(src.Width / 2, src.Height / 2));
+            //Cv2.Resize(dst, dst, src.Size());
 
-            Cv2.ImShow("thresh", dst);
-            Cv2.Canny(dst, dst, 1, 255, 5);
-            //Cv2.Dilate(dst, dst, new Mat(15, 15, MatType.CV_8UC1));
+            //Cv2.GaussianBlur(dst, dst, new Size(21, 21), 0);
+            //Cv2.MedianBlur(dst, dst, 21);
+            //Cv2.ImShow("blur", dst);
 
-            Cv2.ImShow("canny", dst);
-            var lines = Cv2.HoughLines(dst, 1.0, Math.PI / 180, 100);
-            foreach (var line in lines)
-            {
-                var a = Math.Cos(line.Theta);
-                var b = Math.Sin(line.Theta);
+            //Cv2.Canny(dst, dst, 1, 255, 5);
+            //Cv2.ImShow("canny", dst);
 
-                var x0 = a * line.Rho;
-                var y0 = b * line.Rho;
-
-                var x1 = (int)(x0 + 1000 * (-b));
-                var y1 = (int)(y0 + 1000 * (a));
-                var x2 = (int)(x0 - 1000 * (-b));
-                var y2 = (int)(y0 - 1000 * (a));
-
-                Cv2.Line(src, new Point(x1, y1), new Point(x2, y2), Scalar.Yellow, 1);
-            }
-            //var lines = Cv2.HoughLinesP(dst, 1.0, Math.PI / 180, 10, 100, 10);
-
+            //var lines = Cv2.HoughLines(dst, 1.0, Math.PI / 180, 100);
             //foreach (var line in lines)
             //{
-            //    Cv2.Line(src, line.P1, line.P2, Scalar.Yellow, 1);
-            //}
+            //    var a = Math.Cos(line.Theta);
+            //    var b = Math.Sin(line.Theta);
 
-            Cv2.ImShow("res", src);
+            //    var x0 = a * line.Rho;
+            //    var y0 = b * line.Rho;
+
+            //    var x1 = (int)(x0 + 1000 * (-b));
+            //    var y1 = (int)(y0 + 1000 * (a));
+            //    var x2 = (int)(x0 - 1000 * (-b));
+            //    var y2 = (int)(y0 - 1000 * (a));
+            //    Cv2.Line(src, new Point(x1, y1), new Point(x2, y2), Scalar.Yellow, 1);
+            //}
+            //Cv2.NamedWindow("edges", WindowMode.AutoSize);
+            //Cv2.ImShow("edges", src);
 
             //src.CopyTo(guassianRes);
-
-
             //var win = new Window("edges", WindowMode.FreeRatio);
             //var trackbar2 = win.CreateTrackbar("gaussian", 10, 10, ks =>
             //{
@@ -75,16 +64,26 @@ namespace DocScanner.Core.Test
             //    win.Image = cannyRes;
             //}); // canny 15
 
-            imageProc.GetOuterBoundary();
+            //guassianRes.Dispose();
+            //cannyRes.Dispose();
+            //win.Dispose();
+
+            var corners = imageProc.FindCorners();
+
+            Cv2.Circle(src, corners[0], 15, Scalar.Red, 2); //upper-left
+            Cv2.Circle(src, corners[1], 15, Scalar.Yellow, 2); //upper-right
+            Cv2.Circle(src, corners[2], 15, Scalar.Blue, 2); //lower-right
+            Cv2.Circle(src, corners[3], 15, Scalar.White, 2); //lower-left
+
+            Cv2.NamedWindow("corners", WindowMode.Normal);
+            Cv2.ImShow("corners", src);
 
             while (true)
             {
                 if (27 == (char)Cv2.WaitKey()) break;
             }
 
-            guassianRes.Dispose();
-            cannyRes.Dispose();
-            //win.Dispose();
+            Cv2.DestroyAllWindows();
         }
     }
 }
