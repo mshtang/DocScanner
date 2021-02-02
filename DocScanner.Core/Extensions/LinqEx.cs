@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OpenCvSharp;
+using System;
 using System.Collections.Generic;
 
 namespace DocScanner.Core.Extensions
@@ -16,7 +17,7 @@ namespace DocScanner.Core.Extensions
         {
             if (source == null) throw new ArgumentNullException("source");
             if (selector == null) throw new ArgumentNullException("selector");
-            comparer ??= Comparer<TKey>.Default;
+            if (comparer == null) comparer = Comparer<TKey>.Default;
 
             using (var sourceIterator = source.GetEnumerator())
             {
@@ -51,7 +52,7 @@ namespace DocScanner.Core.Extensions
         {
             if (source == null) throw new ArgumentNullException("source");
             if (selector == null) throw new ArgumentNullException("selector");
-            comparer ??= Comparer<TKey>.Default;
+            if (comparer == null) comparer = Comparer<TKey>.Default;
 
             using (var sourceIterator = source.GetEnumerator())
             {
@@ -73,6 +74,16 @@ namespace DocScanner.Core.Extensions
                 }
                 return max;
             }
+        }
+
+        public static (Point, Point, Point, Point) SortCorners(this IEnumerable<Point> corners)
+        {
+            var tl = corners.MinBy(pt => pt.X + pt.Y); // top left
+            var br = corners.MaxBy(pt => pt.X + pt.Y); // bottom right
+            var tr = corners.MaxBy(pt => pt.X - pt.Y); // top right
+            var bl = corners.MinBy(pt => pt.X - pt.Y); // bottom left
+
+            return (tl, tr, br, bl);
         }
     }
 }

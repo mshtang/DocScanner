@@ -15,9 +15,8 @@ namespace DocScanner.Core.Test
         static void TestParams()
         {
             string imagePath = @"..\..\..\..\Data\test1.jpeg";
-            var imageProc = new ImageProcessor(imagePath);
-
-            var src = imageProc.OrigImage.Clone();
+            using var img = Cv2.ImRead(imagePath, ImreadModes.AnyColor);
+            var imageProc = new ImageProcessor(img.Size());
 
             //Cv2.Resize(src, src, new Size(300, (int)((float)300 / src.Width * src.Height)));
             //Cv2.Resize(src, src, new Size(src.Width / 2, src.Height / 2));
@@ -66,21 +65,21 @@ namespace DocScanner.Core.Test
             //cannyRes.Dispose();
             //win.Dispose();
 
-            //var (tl, tr, br, bl) = imageProc.FindCorners();
+            var (tl, tr, br, bl) = imageProc.FindCorners(img.Clone());
 
-            //Cv2.Circle(src, tl, 15, Scalar.Red, 2); //upper-left
-            //Cv2.Circle(src, tr, 15, Scalar.Yellow, 2); //upper-right
-            //Cv2.Circle(src, br, 15, Scalar.Blue, 2); //lower-right
-            //Cv2.Circle(src, bl, 15, Scalar.White, 2); //lower-left
+            Cv2.Circle(img, tl, 15, Scalar.Red, 2); //upper-left
+            Cv2.Circle(img, tr, 15, Scalar.Yellow, 2); //upper-right
+            Cv2.Circle(img, br, 15, Scalar.Blue, 2); //lower-right
+            Cv2.Circle(img, bl, 15, Scalar.White, 2); //lower-left
 
-            //Cv2.NamedWindow("corners", WindowMode.Normal);
-            //Cv2.ImShow("corners", src);
+            Cv2.NamedWindow("corners", WindowMode.Normal);
+            Cv2.ImShow("corners", img);
 
-            //var res = imageProc.TransformImage(tl, tr, br, bl);
-            //Cv2.NamedWindow("res", WindowMode.Normal);
-            //Cv2.ImShow("res", res);
+            using var res = imageProc.ReprojectImage(img.Clone(), tl, tr, br, bl);
+            Cv2.NamedWindow("res", WindowMode.Normal);
+            Cv2.ImShow("res", res);
 
-            var noShadow = ImageProcessor.RemoveShadow(src);
+            using var noShadow = ImageProcessor.RemoveShadow(img.Clone());
             Cv2.NamedWindow("noshadow", WindowMode.Normal);
             Cv2.ImShow("noshadow", noShadow);
 
@@ -90,7 +89,6 @@ namespace DocScanner.Core.Test
             }
 
             Cv2.DestroyAllWindows();
-            src.Dispose();
         }
     }
 }
