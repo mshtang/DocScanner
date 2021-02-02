@@ -27,65 +27,51 @@
                 <ColumnDefinition />
                 <ColumnDefinition />
             </Grid.ColumnDefinitions>
-            <Image Grid.Column="0"
-                   Width="{Binding ElementName=OriginalImageCanvas, Path=ActualWidth}"
-                   Height="{Binding ElementName=OriginalImageCanvas, Path=ActualHeight}"
-                   Panel.ZIndex="0"
-                   Source="{Binding OriginalImage}"
-                   Stretch="Uniform" />
-            <Polygon Points="{Binding Boundary}"
-                     Stroke="Red"
-                     StrokeThickness="4" />
-            <!--<Canvas>
+            <Canvas x:Name="OriginalImageCanvas"
+                    Grid.Column="0"
+                    Margin="20"
+                    SizeChanged="OriginalImageCanvas_SizeChanged">
+                <Image Width="{Binding ElementName=OriginalImageCanvas, Path=ActualWidth}"
+                       Height="{Binding ElementName=OriginalImageCanvas, Path=ActualHeight}"
+                       Panel.ZIndex="0"
+                       Source="{Binding OriginalImage}"
+                       Stretch="Uniform" />
+                <Polygon Points="{Binding Boundary}"
+                         Stroke="Red"
+                         StrokeThickness="4" />
                 <Ellipse Canvas.Left="{Binding TopLeft.X}"
                          Canvas.Top="{Binding TopLeft.Y}"
+                         Width="10"
                          Height="10"
                          HorizontalAlignment="Right"
                          VerticalAlignment="Bottom"
-                         Fill="red"
+                         Fill="Yellow"
                          MouseMove="Ellipse_MouseMove" />
-                <Ellipse Width="10"
+                <Ellipse Canvas.Left="{Binding TopRight.X}"
+                         Canvas.Top="{Binding TopRight.Y}"
+                         Width="10"
                          Height="10"
                          HorizontalAlignment="Right"
                          VerticalAlignment="Bottom"
-                         Fill="red"
+                         Fill="Yellow"
                          MouseMove="Ellipse_MouseMove" />
-                <Ellipse Width="10"
+                <Ellipse Canvas.Left="{Binding BottomLeft.X}"
+                         Canvas.Top="{Binding BottomLeft.Y}"
+                         Width="10"
                          Height="10"
                          HorizontalAlignment="Right"
                          VerticalAlignment="Bottom"
-                         Fill="red"
+                         Fill="Yellow"
                          MouseMove="Ellipse_MouseMove" />
-                <Ellipse Width="10"
+                <Ellipse Canvas.Left="{Binding BottomRight.X}"
+                         Canvas.Top="{Binding BottomRight.Y}"
+                         Width="10"
                          Height="10"
                          HorizontalAlignment="Right"
                          VerticalAlignment="Bottom"
-                         Fill="red"
+                         Fill="Yellow"
                          MouseMove="Ellipse_MouseMove" />
-            </Canvas>-->
-            <ItemsControl Grid.Column="0" ItemsSource="{Binding PointsPositions}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <Canvas x:Name="OriginalImageCanvas" SizeChanged="OriginalImageCanvas_SizeChanged" />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemContainerStyle>
-                    <Style TargetType="ContentPresenter">
-                        <Setter Property="Canvas.Top" Value="{Binding Y}" />
-                        <Setter Property="Canvas.Left" Value="{Binding X}" />
-                    </Style>
-                </ItemsControl.ItemContainerStyle>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Ellipse Width="10"
-                                 Height="10"
-                                 HorizontalAlignment="Right"
-                                 VerticalAlignment="Bottom"
-                                 Fill="red"
-                                 MouseMove="Ellipse_MouseMove" />
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            </Canvas>
 
             <Image Grid.Column="1"
                    Margin="20"

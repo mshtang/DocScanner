@@ -29,7 +29,7 @@ namespace DocScanner.WPF.Views
             {
                 if (e.LeftButton == MouseButtonState.Pressed)
                 {
-                    Point p = e.GetPosition(sender as Canvas);
+                    Point p = e.GetPosition(OriginalImageCanvas);
                     Canvas.SetLeft(shape, p.X - shape.ActualWidth / 2);
                     Canvas.SetTop(shape, p.Y - shape.ActualHeight / 2);
                     shape.CaptureMouse();

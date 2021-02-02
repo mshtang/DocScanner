@@ -5,8 +5,6 @@ namespace DocScanner.WPF.ViewModels
 {
     public class PointPositionViewModel : BindableBase
     {
-        private Point originalPoint;
-
         private double _x;
         public double X
         {
@@ -21,17 +19,10 @@ namespace DocScanner.WPF.ViewModels
             set => SetProperty(ref _y, value);
         }
 
-        public PointPositionViewModel(Point point, double resizeScale, double xOffset, double yOffset)
+        public PointPositionViewModel(Point point)
         {
-            originalPoint = point;
-
-            CalculatePosition(resizeScale, xOffset, yOffset);
-        }
-
-        public void CalculatePosition(double resizeScale, double xOffset, double yOffset)
-        {
-            X = originalPoint.X / resizeScale + xOffset;
-            Y = originalPoint.Y / resizeScale + yOffset;
+            X = point.X;
+            Y = point.Y;
         }
     }
 }

@@ -5,7 +5,6 @@ using OpenCvSharp.Extensions;
 using Prism.Commands;
 using Prism.Mvvm;
 using System;
-using System.Collections.ObjectModel;
 using System.Drawing;
 using System.IO;
 using System.Windows.Media;
@@ -53,11 +52,32 @@ namespace DocScanner.WPF.ViewModels
             set => SetProperty(ref _boundary, value);
         }
 
-        private ObservableCollection<PointPositionViewModel> _pointsPositions;
-        public ObservableCollection<PointPositionViewModel> PointsPositions
+        private PointPositionViewModel _topLeft;
+        public PointPositionViewModel TopLeft
         {
-            get => _pointsPositions;
-            set => SetProperty(ref _pointsPositions, value);
+            get => _topLeft;
+            set => SetProperty(ref _topLeft, value);
+        }
+
+        private PointPositionViewModel _topRight;
+        public PointPositionViewModel TopRight
+        {
+            get => _topRight;
+            set => SetProperty(ref _topRight, value);
+        }
+
+        private PointPositionViewModel _bottomLeft;
+        public PointPositionViewModel BottomLeft
+        {
+            get => _bottomLeft;
+            set => SetProperty(ref _bottomLeft, value);
+        }
+
+        private PointPositionViewModel _bottomRight;
+        public PointPositionViewModel BottomRight
+        {
+            get => _bottomRight;
+            set => SetProperty(ref _bottomRight, value);
         }
 
         public DelegateCommand SelectImage { get; private set; }
@@ -123,17 +143,17 @@ namespace DocScanner.WPF.ViewModels
                 translation.Y = 0;
             }
 
-            var tl = translation + _tl * (1 / scale);
-            var tr = translation + _tr * (1 / scale);
-            var br = translation + _br * (1 / scale);
-            var bl = translation + _bl * (1 / scale);
+            TopLeft = new PointPositionViewModel(translation + _tl * (1 / scale));
+            TopRight = new PointPositionViewModel(translation + _tr * (1 / scale));
+            BottomRight = new PointPositionViewModel(translation + _br * (1 / scale));
+            BottomLeft = new PointPositionViewModel(translation + _bl * (1 / scale));
 
             Boundary = new PointCollection
             {
-                new System.Windows.Point(tl.X, tl.Y),
-                new System.Windows.Point(tr.X, tr.Y),
-                new System.Windows.Point(br.X, br.Y),
-                new System.Windows.Point(bl.X, bl.Y)
+                new System.Windows.Point(TopLeft.X, TopLeft.Y),
+                new System.Windows.Point(TopRight.X, TopRight.Y),
+                new System.Windows.Point(BottomRight.X, BottomRight.Y),
+                new System.Windows.Point(BottomLeft.X, BottomLeft.Y)
             };
         }
 
