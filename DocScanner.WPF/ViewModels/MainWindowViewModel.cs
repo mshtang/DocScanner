@@ -1,4 +1,5 @@
 ﻿using DocScanner.Core.Services;
+using DocScanner.WPF.Extenstions;
 using Microsoft.Win32;
 using OpenCvSharp;
 using OpenCvSharp.Extensions;
@@ -52,39 +53,59 @@ namespace DocScanner.WPF.ViewModels
             set => SetProperty(ref _boundary, value);
         }
 
-        private PointPositionViewModel _topLeft;
-        public PointPositionViewModel TopLeft
+        private PointViewModel _topLeft;
+        public PointViewModel TopLeft
         {
             get => _topLeft;
             set => SetProperty(ref _topLeft, value);
         }
 
-        private PointPositionViewModel _topRight;
-        public PointPositionViewModel TopRight
+        private PointViewModel _topRight;
+        public PointViewModel TopRight
         {
             get => _topRight;
             set => SetProperty(ref _topRight, value);
         }
 
-        private PointPositionViewModel _bottomLeft;
-        public PointPositionViewModel BottomLeft
+        private PointViewModel _bottomLeft;
+        public PointViewModel BottomLeft
         {
             get => _bottomLeft;
             set => SetProperty(ref _bottomLeft, value);
         }
 
-        private PointPositionViewModel _bottomRight;
-        public PointPositionViewModel BottomRight
+        private PointViewModel _bottomRight;
+        public PointViewModel BottomRight
         {
             get => _bottomRight;
             set => SetProperty(ref _bottomRight, value);
         }
 
+        private bool _imageLoaded;
+        public bool ImageLoaded
+        {
+            get => _imageLoaded;
+            set => SetProperty(ref _imageLoaded, value);
+        }
+
         public DelegateCommand SelectImage { get; private set; }
+        public DelegateCommand RegenImage { get; private set; }
+        public DelegateCommand SaveImage { get; private set; }
 
         public MainWindowViewModel()
         {
             SelectImage = new DelegateCommand(ExecuteSelectImage);
+            RegenImage = new DelegateCommand(ExecuteRegenImage);
+            SaveImage = new DelegateCommand(ExecuteSaveImage);
+        }
+
+        private void ExecuteSaveImage()
+        {
+            var saveFileDialog = new SaveFileDialog();
+            if (saveFileDialog.ShowDialog() == true)
+            {
+                FinalImage.Save(saveFileDialog.FileName);
+            }
         }
 
         private void ExecuteSelectImage()
@@ -109,11 +130,13 @@ namespace DocScanner.WPF.ViewModels
             using var image = Cv2.ImRead(ImagePath, ImreadModes.AnyColor);
             var processor = new ImageProcessor(image.Size());
             (_tl, _tr, _br, _bl) = processor.FindCorners(image);
-            UpdateBoundary();
+
+            TransformPoints();
 
             using var newImage = processor.ReprojectImage(image, _tl, _tr, _br, _bl);
             using var finalImageMat = ImageProcessor.RemoveShadow(newImage);
             FinalImage = BitmapToImageSource(finalImageMat.ToBitmap());
+            ImageLoaded = true;
         }
 
         internal void UpdateCanvasSize(double actualWidth, double actualHeight)
@@ -123,11 +146,61 @@ namespace DocScanner.WPF.ViewModels
 
             if (Boundary != null)
             {
-                UpdateBoundary();
+                TransformPoints();
             }
         }
 
-        private void UpdateBoundary()
+        private void ExecuteRegenImage()
+        {
+            using var image = Cv2.ImRead(ImagePath, ImreadModes.AnyColor);
+            var processor = new ImageProcessor(image.Size());
+            TransformPoints(false);
+            using var newImage = processor.ReprojectImage(image, _tl, _tr, _br, _bl);
+            using var finalImageMat = ImageProcessor.RemoveShadow(newImage);
+            FinalImage = BitmapToImageSource(finalImageMat.ToBitmap());
+            ImageLoaded = true;
+        }
+
+        /// <summary>
+        /// Rescales the boundary when image loads or window size changes
+        /// </summary>
+        /// <param name="fromImageToCanvas">if true, transform the points on image coordinates to canvas coordinates;
+        /// otherwise, from canvas coordinates to image coordinates</param>
+        private void TransformPoints(bool fromImageToCanvas = true)
+        {
+            var useCanvasWidth = _originalImageWidth / _canvasWidth > _originalImageHeight / _canvasHeight;
+            var scale = useCanvasWidth ? _originalImageWidth / _canvasWidth : _originalImageHeight / _canvasHeight;
+            Point translation = new Point();
+            if (useCanvasWidth)
+            {
+                translation.X = 0;
+                translation.Y = (int)((_canvasHeight - _originalImageHeight / scale) / 2);
+            }
+            else
+            {
+                translation.X = (int)((_canvasWidth - _originalImageWidth / scale) / 2);
+                translation.Y = 0;
+            }
+
+            if (fromImageToCanvas)
+            {
+                TopLeft = new PointViewModel(this, translation + _tl * (1 / scale));
+                TopRight = new PointViewModel(this, translation + _tr * (1 / scale));
+                BottomRight = new PointViewModel(this, translation + _br * (1 / scale));
+                BottomLeft = new PointViewModel(this, translation + _bl * (1 / scale));
+
+                RedrawBoundary();
+            }
+            else
+            {
+                _tl = (TopLeft.ToPoint() - translation) * scale;
+                _tr = (TopRight.ToPoint() - translation) * scale;
+                _br = (BottomRight.ToPoint() - translation) * scale;
+                _bl = (BottomLeft.ToPoint() - translation) * scale;
+            }
+        }
+
+        private void TransformPointsFromCanvasToImage()
         {
             var useCanvasWidth = _originalImageWidth / _originalImageHeight > _canvasWidth / _canvasHeight;
             var scale = useCanvasWidth ? _originalImageWidth / _canvasWidth : _originalImageHeight / _canvasHeight;
@@ -142,19 +215,21 @@ namespace DocScanner.WPF.ViewModels
                 translation.X = (int)((_canvasWidth - _originalImageWidth / scale) / 2);
                 translation.Y = 0;
             }
+        }
 
-            TopLeft = new PointPositionViewModel(translation + _tl * (1 / scale));
-            TopRight = new PointPositionViewModel(translation + _tr * (1 / scale));
-            BottomRight = new PointPositionViewModel(translation + _br * (1 / scale));
-            BottomLeft = new PointPositionViewModel(translation + _bl * (1 / scale));
-
-            Boundary = new PointCollection
-            {
-                new System.Windows.Point(TopLeft.X, TopLeft.Y),
-                new System.Windows.Point(TopRight.X, TopRight.Y),
-                new System.Windows.Point(BottomRight.X, BottomRight.Y),
-                new System.Windows.Point(BottomLeft.X, BottomLeft.Y)
-            };
+        /// <summary>
+        /// Redraw the boundary when user moves the corner points
+        /// </summary>
+        public void RedrawBoundary()
+        {
+            if (TopLeft != null && TopRight != null && BottomRight != null && BottomLeft != null)
+                Boundary = new PointCollection
+                    {
+                        new System.Windows.Point(TopLeft.X, TopLeft.Y),
+                        new System.Windows.Point(TopRight.X, TopRight.Y),
+                        new System.Windows.Point(BottomRight.X, BottomRight.Y),
+                        new System.Windows.Point(BottomLeft.X, BottomLeft.Y)
+                    };
         }
 
         private BitmapImage BitmapToImageSource(Bitmap bitmap)

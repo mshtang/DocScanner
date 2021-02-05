@@ -23,7 +23,7 @@ namespace DocScanner.WPF.Views
             (DataContext as MainWindowViewModel).UpdateCanvasSize(canvas.ActualWidth, canvas.ActualHeight);
         }
 
-        private void Ellipse_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+        private void Ellipse_MouseMove(object sender, MouseEventArgs e)
         {
             if (e.Source is Shape shape)
             {
