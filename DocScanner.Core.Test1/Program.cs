@@ -14,7 +14,7 @@ namespace DocScanner.Core.Test
         }
         static void TestParams()
         {
-            string imagePath = @"..\..\..\..\Data\test1.jpeg";
+            string imagePath = @"..\..\..\..\Data\test5.jpeg";
             using var img = Cv2.ImRead(imagePath, ImreadModes.AnyColor);
             var imageProc = new ImageProcessor(img.Size());
 

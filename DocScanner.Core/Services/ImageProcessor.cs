@@ -2,6 +2,7 @@
 using OpenCvSharp;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace DocScanner.Core.Services
 {
@@ -25,78 +26,141 @@ namespace DocScanner.Core.Services
         /// Find the 4 corners of a scanned doc 
         /// </summary>
         /// <returns>The corner point in the upper-left, upper-right, lower-right and lower-left position</returns>
-        public (Point, Point, Point, Point) FindCorners(Mat img)
+        public (Point, Point, Point, Point) FindCorners(in Mat src)
         {
-            Cv2.CvtColor(img, img, ColorConversionCodes.BGR2GRAY);
+            using var img = src.Clone();
+            Cv2.Resize(img, img, new Size(_smallerWidth, _smallerHeight));
 
             using var gray = new Mat();
-            Cv2.Resize(img, gray, new Size(_smallerWidth, _smallerHeight));
+            if (img.Channels() == 3)
+                Cv2.CvtColor(img, gray, ColorConversionCodes.BGR2GRAY);
 
             Cv2.GaussianBlur(gray, gray, new Size(21, 21), 0);
             Cv2.MedianBlur(gray, gray, 21);
             Cv2.Canny(gray, gray, 1, 255, 5);
-            var lineSegmentPolars = Cv2.HoughLines(gray, 1.0, Math.PI / 180, 100);
 
-            var hLines = new List<LineSegmentPolar>();
-            var vLines = new List<LineSegmentPolar>();
-            foreach (var line in lineSegmentPolars)
+            var candidateLines = new List<LineSegmentPolar>();
+            var initThresh = 100;
+            while (candidateLines.Count < 4 && initThresh > 0)
             {
-                if (line.IsBetween(0, 3) || line.IsBetween(177, 180))
-                    hLines.Add(line);
-                else if (line.IsBetween(87, 93))
-                    vLines.Add(line);
-            }
+                candidateLines.Clear();
+#if DEBUG
+                using var canvas1 = img.Clone();
+                using var canvas2 = img.Clone();
+#endif
+                var lineSegmentPolars = Cv2.HoughLines(gray, 1.0, Math.PI / 180, initThresh);
+                foreach (var line in lineSegmentPolars)
+                {
+#if DEBUG
+                    Console.WriteLine($"Angle: {line.Theta / Math.PI * 180}");
+                    var lineSegment = line.ToSegmentPoint(1000);
+                    Cv2.Line(canvas1, lineSegment.P1, lineSegment.P2, Scalar.Yellow, 1);
+#endif
+                    // if the line is far from horizontal or vertical, ignore
+                    if (!(line.IsBetween(0, 5) || line.IsBetween(175, 180) || line.IsBetween(85, 95)))
+                        continue;
 
-            var topLine = new LineSegmentPolar();
-            var bottomLine = new LineSegmentPolar();
-            if (hLines.Count >= 2)
-            {
-                topLine = hLines.MinBy(line => line.Rho);
-                bottomLine = hLines.MaxBy(line => line.Rho);
-            }
-            else if (hLines.Count == 1)
-            {
-                if (hLines[0].Rho > _smallerHeight / 2)
-                {
-                    topLine = new LineSegmentPolar(0, 0);
-                    bottomLine = hLines[0];
+                    // if the line is similar to a candidate line, ignore
+                    if (candidateLines.Where(l => l.IsSimilarTo(line)).Count() != 0)
+                        continue;
+
+                    candidateLines.Add(line);
+#if DEBUG
+                    Cv2.Line(canvas2, lineSegment.P1, lineSegment.P2, Scalar.Yellow, 2);
+#endif
                 }
-                else
-                {
-                    topLine = hLines[0];
-                    bottomLine = new LineSegmentPolar(_smallerHeight, 0);
-                }
-            }
-            else
-            {
-                topLine = new LineSegmentPolar(0, 0);
-                bottomLine = new LineSegmentPolar(_smallerHeight, 0);
+                initThresh -= 10;
             }
 
-            var leftLine = new LineSegmentPolar();
-            var rightLine = new LineSegmentPolar();
-            if (vLines.Count >= 2)
+            var hLines = new List<LineSegmentPoint>();
+            var vLines = new List<LineSegmentPoint>();
+            foreach (var line in candidateLines)
             {
-                leftLine = vLines.MinBy(line => line.Rho);
-                rightLine = vLines.MaxBy(line => line.Rho);
-            }
-            else if (vLines.Count == 1)
-            {
-                if (vLines[0].Rho > _smallerWidth / 2)
+                if (line.IsBetween(0, 5) || line.IsBetween(175, 180))
                 {
-                    leftLine = new LineSegmentPolar(0, (float)Math.PI / 2);
-                    rightLine = vLines[0];
+                    vLines.Add(line.ToSegmentPoint(1000));
                 }
-                else
+                else if (line.IsBetween(85, 95))
                 {
-                    leftLine = vLines[0];
-                    rightLine = new LineSegmentPolar(_smallerWidth, (float)Math.PI / 2);
+                    hLines.Add(line.ToSegmentPoint(1000));
                 }
             }
-            else
+
+            var topLineMax = 0;
+            var bottomLineMin = img.Height;
+            var topLine = new LineSegmentPoint();
+            var bottomLine = new LineSegmentPoint();
+            var vCentralLine = new LineSegmentPoint(new Point(img.Width / 2, 0), new Point(img.Width / 2, img.Height));
+#if DEBUG
+            using var canvas = img.Clone();
+            Cv2.Line(canvas, vCentralLine.P1, vCentralLine.P2, Scalar.Blue, 2);
+#endif
+            foreach (var hLine in hLines)
             {
-                leftLine = new LineSegmentPolar(0, (float)Math.PI / 2);
-                rightLine = new LineSegmentPolar(_smallerWidth, (float)Math.PI / 2);
+                var pt = hLine.LineIntersection(vCentralLine).Value;
+                if (pt.Y < img.Height / 2) // search for topline
+                {
+                    if (pt.Y > topLineMax)
+                    {
+                        topLineMax = pt.Y;
+                        topLine = hLine;
+                    }
+#if DEBUG
+                    Cv2.Line(canvas, topLine.P1, topLine.P2, Scalar.Yellow, 2);
+                    Cv2.Circle(canvas, pt, 3, Scalar.Red, 3);
+#endif
+                }
+                else // search for bottomLine
+                {
+                    if (pt.Y < bottomLineMin)
+                    {
+                        bottomLineMin = pt.Y;
+                        bottomLine = hLine;
+                    }
+#if DEBUG
+                    Cv2.Line(canvas, bottomLine.P1, bottomLine.P2, Scalar.Yellow, 2);
+                    Cv2.Circle(canvas, pt, 3, Scalar.Red, 3);
+#endif
+                }
+            }
+
+            var leftLineMax = 0;
+            var rightLineMin = img.Width;
+            var leftLine = new LineSegmentPoint();
+            var rightLine = new LineSegmentPoint();
+            var hCentralLine = new LineSegmentPoint(new Point(0, img.Height / 2), new Point(img.Width, img.Height / 2));
+#if DEBUG
+            Cv2.Line(canvas, hCentralLine.P1, hCentralLine.P2, Scalar.Blue, 2);
+#endif
+
+            foreach (var vLine in vLines)
+            {
+                var pt = vLine.LineIntersection(hCentralLine).Value;
+                if (pt.X < img.Width / 2) // search for leftLine
+                {
+                    if (pt.X > leftLineMax)
+                    {
+                        leftLineMax = pt.X;
+                        leftLine = vLine;
+                    }
+#if DEBUG
+                    Cv2.Line(canvas, leftLine.P1, leftLine.P2, Scalar.Yellow, 2);
+                    Cv2.Circle(canvas, pt, 3, Scalar.Red, 3);
+#endif
+                }
+                else // search for rightLine
+                {
+                    if (pt.X < rightLineMin)
+                    {
+                        rightLineMin = pt.X;
+                        rightLine = vLine;
+                    }
+#if DEBUG
+                    Cv2.Line(canvas, rightLine.P1, rightLine.P2, Scalar.Yellow, 2);
+                    Cv2.Circle(canvas, pt, 3, Scalar.Red, 3);
+#endif
+                }
+
             }
 
             var corners = new List<Point>() {
@@ -105,7 +169,6 @@ namespace DocScanner.Core.Services
                 bottomLine.LineIntersection(leftLine).Value * (1 / _scale),
                 bottomLine.LineIntersection(rightLine).Value * (1 / _scale)
             };
-
             return corners.SortCorners();
         }
 

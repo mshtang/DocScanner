@@ -101,7 +101,12 @@ namespace DocScanner.WPF.ViewModels
 
         private void ExecuteSaveImage()
         {
-            var saveFileDialog = new SaveFileDialog();
+            var saveFileDialog = new SaveFileDialog
+            {
+                Filter = "Image files (*.jpeg)|*.jpeg",
+                DefaultExt = ".jpg",
+            };
+
             if (saveFileDialog.ShowDialog() == true)
             {
                 FinalImage.Save(saveFileDialog.FileName);
@@ -225,10 +230,10 @@ namespace DocScanner.WPF.ViewModels
             if (TopLeft != null && TopRight != null && BottomRight != null && BottomLeft != null)
                 Boundary = new PointCollection
                     {
-                        new System.Windows.Point(TopLeft.X, TopLeft.Y),
-                        new System.Windows.Point(TopRight.X, TopRight.Y),
-                        new System.Windows.Point(BottomRight.X, BottomRight.Y),
-                        new System.Windows.Point(BottomLeft.X, BottomLeft.Y)
+                        new System.Windows.Point(TopLeft.X.Clamp(0, _canvasWidth), TopLeft.Y.Clamp(0, _canvasHeight)),
+                        new System.Windows.Point(TopRight.X.Clamp(0, _canvasWidth), TopRight.Y.Clamp(0, _canvasHeight)),
+                        new System.Windows.Point(BottomRight.X.Clamp(0, _canvasWidth), BottomRight.Y.Clamp(0, _canvasHeight)),
+                        new System.Windows.Point(BottomLeft.X.Clamp(0, _canvasWidth), BottomLeft.Y.Clamp(0, _canvasHeight))
                     };
         }
 
